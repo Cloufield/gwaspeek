@@ -1,8 +1,48 @@
 # gwaspeek
 
-Terminal **interactive** Manhattan plots for GWAS summary statistics: pan and zoom in a real TTY, inspect regions, and optionally show a protein-coding **gene track** when the view is a single chromosome and spans **≤ 1 Mb**.
+**Interactive** terminal Manhattan plots for GWAS summary statistics: pan and zoom in a real TTY, inspect regions, and optionally show a protein-coding **gene track** when the view is a single chromosome and spans **≤ 1 Mb**.
 
-**Also:** one-shot **static** renders (`-s`) for logs or CI; column names **auto-detected** from bundled [formatbook](https://github.com/Cloufield/formatbook)-style aliases; **Unicode** or **`--ascii`**.
+Static one-shot renders (`-s`) are available for logs or CI. Column names are **auto-detected** from bundled [formatbook](https://github.com/Cloufield/formatbook)-style aliases. Drawing uses **Unicode** or **`--ascii`**.
+
+## Interactive mode (default)
+
+Interactive mode runs when you pass **exactly one** input path as **`gwaspeek FILE`** or **`gwaspeek -i FILE`**. More than one path (for example a positional file plus `-s`) is an error.
+
+Use a **real TTY** when you can; the viewer is built for live keyboard input and redraw.
+
+### Try it
+
+After [installation](#installation), from a directory that contains the file:
+
+```bash
+gwaspeek t2d_bbj_p1e-5.txt.gz
+```
+
+### Keys
+
+| Key | Action |
+|-----|--------|
+| `A` / `D` | Pan |
+| `W` / `S` | Zoom out / in |
+| `l` | Toggle lead-variant labels |
+| `t` | Cycle gene track: `37` → `38` → `off` |
+| `v` | Toggle variants-in-view list |
+| `h` | Toggle help |
+| `r` | Reset to full genome |
+| `q` | Quit |
+
+The gene track appears only on a **single-chromosome** view with span **≤ 1 Mb**. **`--gtf`** and **`--gtf38`** (see [CLI reference](#cli-reference)) apply **only** in interactive mode; static **`-s`** output ignores them.
+
+Common sizing and column flags work in interactive mode too (for example **`--width`**, **`--height`**, **`--skip`**, **`--sig-level`**):
+
+```bash
+gwaspeek sumstats.tsv \
+  --sep "\t" \
+  --width 120 \
+  --height 32 \
+  --skip 2 \
+  --sig-level 5e-8
+```
 
 ## Installation
 
@@ -11,19 +51,9 @@ pip install -e .
 gwaspeek --help
 ```
 
-## Try it
+## Static mode (`-s`)
 
-After install, from a directory that contains the file:
-
-```bash
-gwaspeek t2d_bbj_p1e-5.txt.gz
-```
-
-Interactive mode is the default whenever you pass exactly one path as **`FILE`** or **`-i FILE`**. Use a real TTY when you can. Keys: **`A`** / **`D`** pan, **`W`** / **`S`** zoom out / in, **`h`** help, **`q`** quit — full list under [Interactive keys](#interactive-keys).
-
-### Static preview (same data)
-
-Text snapshot (non-default):
+For a one-shot text snapshot (non-interactive), add **`-s`** before the path:
 
 ```bash
 gwaspeek -s t2d_bbj_p1e-5.txt.gz --width 120 --ascii
@@ -50,7 +80,6 @@ Manhattan 1:17276978-X:153269341                                                
       │                                                           ●         ●
       │                                        ○                  ●         ●
       │                                        ○          ●       ●         ●
-      │                                        ○          ●       ●         ●
    55.0│                                        ○          ●                                                           ○
       │                                        ○          ●       ●         ○                                         ○
       │                         ●              ○                  ●        ○●                                         ○
@@ -61,30 +90,13 @@ Manhattan 1:17276978-X:153269341                                                
           1         2       3       4      5      6     7     8     9    10   11   12  13  14 15  16 17 18192022   X
 ```
 
-## How to invoke
-
-Give **exactly one** input path:
+### Invocation at a glance
 
 | Form | Mode |
 |------|------|
 | `gwaspeek FILE` | Interactive (same as `-i`) |
 | `gwaspeek -i FILE` | Interactive |
 | `gwaspeek -s FILE` | Static |
-
-More than one path (e.g. positional plus `-s`) is an error.
-
-Common flags (both modes unless noted):
-
-```bash
-gwaspeek sumstats.tsv \
-  --sep "\t" \
-  --width 120 \
-  --height 32 \
-  --skip 2 \
-  --sig-level 5e-8
-```
-
-Add **`-s`** before the path for a static render instead of interactive.
 
 ## Input files
 
@@ -116,23 +128,6 @@ Tabular GWAS summary stats (TSV/CSV or other delimiter via **`--sep`**).
 | `--gtf38 PATH` | path | — | GRCh38 GTF (`.gz` ok); interactive mode uses bundled gene-only GTF when omitted. |
 | `-h`, `--help` | flag | off | Help. |
 
-## Interactive keys
-
-With **`gwaspeek FILE`** or **`gwaspeek -i FILE`**:
-
-| Key | Action |
-|-----|--------|
-| `A` / `D` | Pan |
-| `W` / `S` | Zoom out / in |
-| `l` | Toggle lead-variant labels |
-| `t` | Cycle gene track: `37` → `38` → `off` |
-| `v` | Toggle variants-in-view list |
-| `h` | Toggle help |
-| `r` | Reset to full genome |
-| `q` | Quit |
-
-Gene track appears only on a **single-chromosome** view with span **≤ 1 Mb**. **`--gtf`** / **`--gtf38`** apply to interactive mode only; static **`-s`** output ignores them.
-
 ## Examples
 
 ```bash
@@ -143,7 +138,7 @@ gwaspeek -i tests/fixtures/sumstats_small.tsv
 # Static
 gwaspeek -s tests/fixtures/sumstats_small.tsv
 
-# Explicit columns (static shown; same flags work for interactive)
+# Explicit columns (flags are the same in interactive mode)
 gwaspeek -s sumstats.tsv --chr CHROM --pos BP --p PVAL
 
 # Precomputed -log10(P)
