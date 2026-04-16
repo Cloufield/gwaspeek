@@ -1,6 +1,9 @@
+
 # gwaspeek
 
 **Interactive** terminal Manhattan plots for GWAS summary statistics: pan and zoom in a real TTY, inspect regions, and optionally show a protein-coding **gene track** when the view is a single chromosome and spans **≤ 1 Mb**.
+
+<img width="1955" height="990" alt="Animation" src="https://github.com/user-attachments/assets/68a982d6-a78c-4ec9-ac6c-c1af63348156" />
 
 Static one-shot renders (`-s`) are available for logs or CI. Column names are **auto-detected** from bundled [formatbook](https://github.com/Cloufield/formatbook)-style aliases. Drawing uses **Unicode** or **`--ascii`**.
 
