@@ -9,16 +9,16 @@ description = "gwaspeek: interactive terminal viewer for GWAS summary statistics
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "gwaspeek contributors" }]
+authors = [{ name = "Yunye He" }]
 dependencies = [
   "pandas>=1.5",
   "numpy>=1.23",
 ]
 
 [project.urls]
-Homepage = "https://github.com/Cloufield/gwast"
-Repository = "https://github.com/Cloufield/gwast"
-Issues = "https://github.com/Cloufield/gwast/issues"
+Homepage = "https://github.com/Cloufield/gwaspeek"
+Repository = "https://github.com/Cloufield/gwaspeek"
+Issues = "https://github.com/Cloufield/gwaspeek/issues"
 
 [project.optional-dependencies]
 dev = [

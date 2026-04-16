@@ -174,4 +174,4 @@ MIT.
 
 ## Repository
 
-[https://github.com/Cloufield/gwast](https://github.com/Cloufield/gwast)
+[https://github.com/Cloufield/gwaspeek](https://github.com/Cloufield/gwaspeek)
