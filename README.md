@@ -1,17 +1,19 @@
 
 # gwaspeek
 
-**Interactive** terminal Manhattan plots for GWAS summary statistics: pan and zoom in a real TTY, inspect regions, and optionally show a protein-coding **gene track** when the view is a single chromosome and spans **≤ 1 Mb**.
+- **Interactive** terminal Manhattan plots for GWAS summary statistics: move the view along the genome and zoom in a real TTY, inspect regions, and optionally show a protein-coding **gene track** when the view is a single chromosome and spans **≤ 1 Mb**.
+- Static one-shot renders (`-s`) for logs or CI.
+- Column names are **auto-detected** from bundled [formatbook](https://github.com/Cloufield/formatbook)-style aliases.
+- Drawing uses **Unicode** or **`--ascii`**.
+
+**Note:** Intended for **quick checks** of summary statistics. Plotted **positions are not exact** on screen because the terminal has **limited pixels** (resolution).
 
 <img width="1955" height="990" alt="Animation" src="https://github.com/user-attachments/assets/68a982d6-a78c-4ec9-ac6c-c1af63348156" />
 
-Static one-shot renders (`-s`) are available for logs or CI. Column names are **auto-detected** from bundled [formatbook](https://github.com/Cloufield/formatbook)-style aliases. Drawing uses **Unicode** or **`--ascii`**.
-
 ## Interactive mode (default)
 
-Interactive mode runs when you pass **exactly one** input path as **`gwaspeek FILE`** or **`gwaspeek -i FILE`**. More than one path (for example a positional file plus `-s`) is an error.
-
-Use a **real TTY** when you can; the viewer is built for live keyboard input and redraw.
+**Interactive mode** (default) opens the live TTY viewer when you pass one input path—**`gwaspeek FILE`** or **`gwaspeek -i FILE`**. 
+In the viewer, **`A`** / **`D`** move the plot left or right along the genome (without changing zoom), and **`W`** / **`S`** zoom out and in.
 
 ### Try it
 
@@ -25,7 +27,7 @@ gwaspeek t2d_bbj_p1e-5.txt.gz
 
 | Key | Action |
 |-----|--------|
-| `A` / `D` | Pan |
+| `A` / `D` | Move view left/right along genome |
 | `W` / `S` | Zoom out / in |
 | `l` | Toggle lead-variant labels |
 | `t` | Cycle gene track: `37` → `38` → `off` |
@@ -153,18 +155,8 @@ gwaspeek -s sumstats.tsv --ascii
 
 ## Tips
 
-- Prefer a **real TTY** for interactive mode.
 - Dense sumstats: raise **`--skip`** to thin points and reduce clutter.
 - Unicode is usually clearer; **`--ascii`** when the terminal cannot draw box drawing / braille well.
-
-## For contributors
-
-```bash
-pip install -e ".[dev]"
-pytest
-```
-
-Pipeline: **`gwaspeek.cli`** parses args and loads data with **`gwaspeek.io`**, normalizes with **`gwaspeek.preprocess`**, then **`gwaspeek.manhattan.render_manhattan`** (static) or **`gwaspeek.interactive.run_interactive_manhattan`** (interactive). Terminal drawing lives in **`gwaspeek.terminal_canvas`**. Tests live under **`tests/`** (see `tests/conftest.py` for `PYTHONPATH` / `src` layout).
 
 ## License
 
