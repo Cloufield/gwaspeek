@@ -50,7 +50,7 @@ gwaspeek sumstats.tsv \
 ## Installation
 
 ```bash
-pip install -e .
+pip install gwaspeek
 gwaspeek --help
 ```
 
