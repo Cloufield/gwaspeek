@@ -20,10 +20,6 @@ class CanvasStyle:
     def axis_v(self) -> str:
         return "│" if self.unicode else "|"
 
-    @property
-    def diag(self) -> str:
-        return "╱" if self.unicode else "/"
-
 
 class TerminalCanvas:
     def __init__(self, width: int, height: int, style: CanvasStyle):
@@ -61,21 +57,16 @@ class TerminalCanvas:
             occupied.add((cx, cy))
             self.set(cx, cy, self.style.point)
 
-    def plot_diag(self) -> None:
-        x0 = 7
-        y0 = self.height - 3
-        w = self.width - x0 - 1
-        h = y0
-        steps = min(w, h)
-        for i in range(steps + 1):
-            x = x0 + i
-            y = y0 - i
-            self.set(x, y, self.style.diag)
-
     def label_top(self, text: str) -> None:
         label = text[: self.width]
         for i, ch in enumerate(label):
             self.set(i, 0, ch)
+
+    def label_top_right(self, text: str) -> None:
+        label = text[: self.width]
+        start = max(0, self.width - len(label))
+        for i, ch in enumerate(label):
+            self.set(start + i, 0, ch)
 
     def render(self) -> str:
         return "\n".join("".join(row).rstrip() for row in self.grid)
