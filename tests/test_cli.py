@@ -103,10 +103,10 @@ def test_cli_version_short_flag(capsys: pytest.CaptureFixture[str]) -> None:
     assert "gwaspeek" in capsys.readouterr().out
 
 
-def test_cli_default_skip_is_5() -> None:
+def test_cli_default_skip_is_3() -> None:
     parser = build_parser()
     args = parser.parse_args([str(FIXTURE)])
-    assert args.skip == 5.0
+    assert args.skip == 3.0
     assert args.build == "37"
     assert args.no_color is False
     assert args.chr_col is None and args.pos_col is None and args.p_col is None

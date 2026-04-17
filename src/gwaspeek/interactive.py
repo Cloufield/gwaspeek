@@ -845,7 +845,7 @@ def run_interactive_manhattan(
     sig_level: float = 5e-8,
     ymax: float | None = None,
     unicode: bool = True,
-    y_min: float = 5.0,
+    y_min: float = 3.0,
     gtf_path: str | None = None,
     gtf38_path: str | None = None,
     build: str = "37",

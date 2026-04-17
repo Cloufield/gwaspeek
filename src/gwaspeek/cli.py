@@ -97,7 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--skip",
         type=float,
-        default=5.0,
+        default=3.0,
         help="Hide variants with -log10(P) below this threshold (also used as the y-axis floor)",
     )
     parser.add_argument("--width", type=int, default=100, help="Terminal width in characters for the plot frame")

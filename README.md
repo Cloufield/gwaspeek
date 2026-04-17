@@ -104,7 +104,7 @@ Tabular GWAS summary stats (TSV/CSV or other delimiter via **`--sep`**).
 | `--pos NAME` | string | auto | Position column. |
 | `--p NAME` | string | auto | P-value column (not with **`--mlog10p`**). |
 | `--mlog10p NAME` | string | auto | `-log10(P)` column (not with **`--p`**). |
-| `--skip FLOAT` | float | `5.0` | Drop variants below this `-log10(P)`; also y-axis floor. |
+| `--skip FLOAT` | float | `3.0` | Drop variants below this `-log10(P)`; also y-axis floor. |
 | `--width INT` | int | `100` | Width (chars): static size; interactive initial/fallback. |
 | `--height INT` | int | `28` | Height (lines): static size; interactive initial/fallback. |
 | `--ascii` | flag | off | ASCII drawing instead of Unicode. |

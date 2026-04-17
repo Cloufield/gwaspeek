@@ -12,7 +12,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "sumstats_small.tsv"
 
 def _prepared_manhattan():
     df = load_sumstats(str(FIXTURE))
-    return preprocess_sumstats(df, skip=5.0)
+    return preprocess_sumstats(df, skip=3.0)
 
 
 def test_sig_threshold_legend_matches_plot_glyph() -> None:
@@ -28,7 +28,7 @@ def test_manhattan_render_deterministic() -> None:
     assert ":" in txt
     assert "+" in txt
     assert "*" in txt
-    assert "5.0" in txt
+    assert "3.0" in txt
     assert "skip>=" in txt
 
 

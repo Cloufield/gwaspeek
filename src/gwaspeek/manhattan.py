@@ -481,7 +481,7 @@ def render_manhattan(
     x_end: float | None = None,
     title: str | None = None,
     unicode: bool = True,
-    y_min: float = 5.0,
+    y_min: float = 3.0,
     lead_variant: Tuple[float, float, str] | None = None,
     gene_track: List[Tuple[float, float, str]] | None = None,
     force_gene_panel: bool = False,
