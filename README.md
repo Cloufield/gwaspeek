@@ -49,7 +49,8 @@ gwaspeek t2d_bbj_p1e-5.txt.gz
 The gene track appears only on a **single-chromosome** view with span **≤ 1 Mb**. **`--gtf`** and **`--gtf38`** (see [CLI reference](#cli-reference)) apply **only** in interactive mode; static **`-s`** output ignores them. **`--build`** sets the canonical chromosome-length layout, and interactive **`t`** build switching keeps the layout aligned with the active gene-track build.
 The interactive viewer uses an alternate terminal screen, lazy-loads gene annotations by genome build, and renders dense cells with heavier glyphs instead of simply dropping overlapping points.
 
-<img width="1955" height="990" alt="Animation" src="https://github.com/user-attachments/assets/68a982d6-a78c-4ec9-ac6c-c1af63348156" />
+<img width="1718" height="854" alt="Animation" src="https://github.com/user-attachments/assets/16be2206-4e12-44b9-ba9e-0cdfcd120182" />
+
 
 Common sizing and column flags work in interactive mode too (for example **`--width`**, **`--height`**, **`--skip`**, **`--sig-level`**):
 
