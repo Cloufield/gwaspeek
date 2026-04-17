@@ -15,6 +15,7 @@ from gwaspeek.plot_state import (
     visible_mask,
 )
 from gwaspeek.terminal_canvas import CanvasStyle, TerminalCanvas
+from gwaspeek.versioning import package_version
 
 
 def _chr_token(chrom: int) -> str:
@@ -503,7 +504,7 @@ def render_manhattan(
 
     canvas = TerminalCanvas(width=width, height=height, style=CanvasStyle(unicode=unicode))
     canvas.draw_axes()
-    canvas.label_top_pair(title, "gwaspeek")
+    canvas.label_top_pair(title, f"gwaspeek v{package_version()}")
 
     x_plot0 = 7
     axis_y = canvas.height - 2
