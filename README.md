@@ -9,7 +9,9 @@
 
 **Note:** Intended for **quick checks** of summary statistics. Plotted **positions are not exact** on screen because the terminal has **limited pixels** (resolution).
 
-<img width="1955" height="990" alt="Animation" src="https://github.com/user-attachments/assets/68a982d6-a78c-4ec9-ac6c-c1af63348156" />
+<img width="857" height="455" alt="image" src="https://github.com/user-attachments/assets/39eced8a-d669-4081-afe0-3ec61cbdd1ff" />
+
+
 
 ## Interactive mode (default)
 
@@ -46,6 +48,8 @@ gwaspeek t2d_bbj_p1e-5.txt.gz
 The gene track appears only on a **single-chromosome** view with span **≤ 1 Mb**. **`--gtf`** and **`--gtf38`** (see [CLI reference](#cli-reference)) apply **only** in interactive mode; static **`-s`** output ignores them. **`--build`** sets the canonical chromosome-length layout, and interactive **`t`** build switching keeps the layout aligned with the active gene-track build.
 The interactive viewer uses an alternate terminal screen, lazy-loads gene annotations by genome build, and renders dense cells with heavier glyphs instead of simply dropping overlapping points.
 
+<img width="1955" height="990" alt="Animation" src="https://github.com/user-attachments/assets/68a982d6-a78c-4ec9-ac6c-c1af63348156" />
+
 Common sizing and column flags work in interactive mode too (for example **`--width`**, **`--height`**, **`--skip`**, **`--sig-level`**):
 
 ```bash
@@ -70,37 +74,6 @@ For a one-shot text snapshot (non-interactive), add **`-s`** before the path:
 
 ```bash
 gwaspeek -s t2d_bbj_p1e-5.txt.gz --width 120 --ascii
-```
-
-Sample output:
-
-```text
-Manhattan 1:17276978-X:153269341                                                                                gwaspeek
- 205.0│
-      │
-      │
-      │
-      │                                                                     ●
-      │                                                                     ●
- 155.0│                                                                     ●
-      │                                                                     ●
-      │
-      │
-      │                                                                     ●
-      │
- 105.0│                                                                     ●
-      │                                                                     ●
-      │                                                           ●         ●
-      │                                        ○                  ●         ●
-      │                                        ○          ●       ●         ●
-   55.0│                                        ○          ●                                                           ○
-      │                                        ○          ●       ●         ○                                         ○
-      │                         ●              ○                  ●        ○●                                         ○
-      │                   ●     ○              ○          ●     ○ ●        ○○                         ●
-      │         ○         ●●    ●     ○   ●    ○○   ○   ● ●  ○  ○ ●  ● ●  ○○○     ○○   ●● ●    ●●  ○ ●●   ○ ●        ○○
-   5.0│╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌○
-      +───+─────────+───────+───────+──────+──────+─────+─────+─────+─────+────+────+───+───+──+───+──+──+─+─+─+───+────
-          1         2       3       4      5      6     7     8     9    10   11   12  13  14 15  16 17 18192022   X
 ```
 
 ### Invocation at a glance
