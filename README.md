@@ -17,6 +17,7 @@
 
 **Interactive mode** (default) opens the live TTY viewer when you pass one input path—**`gwaspeek FILE`** or **`gwaspeek -i FILE`**.
 In the viewer, **`a`** / **`d`** pan the plot in smaller steps (and **`A`** / **`D`** pan in larger steps). **`w`** / **`s`** zoom out and in gently; **`W`** / **`S`** use the original coarser zoom. Arrow keys and **`+`** / **`-`** mirror the fine controls, the mouse wheel zooms at the hovered cursor position, and **`g`** jumps directly to a typed region such as `chr3:45000000-46000000`.
+Use **`--skip`** (default **3.0**) to omit variants whose **-log10(P)** is below that value before plotting; the same threshold is the **y-axis floor** in the plot.
 
 ### Try it
 
