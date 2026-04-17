@@ -1004,7 +1004,10 @@ def run_interactive_manhattan(
                 elif key in {"g", "G"}:
                     view_mode = "plot"
                     notice = _prompt_for_region(fd, old_settings, viewport, offsets_pre, chr_sizes_pre)
-                elif key in {"m", "M"}:
+                # Keep theme toggle on lowercase only.
+                # Some terminals can surface wheel escape tail bytes as stray "M",
+                # which should never flip palette.
+                elif key == "m":
                     light_theme = not light_theme
                 else:
                     old_build = active_build
