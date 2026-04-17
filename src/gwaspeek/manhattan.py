@@ -6,6 +6,12 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
+from gwaspeek.plot_state import (
+    PlotDataset,
+    build_genome_layout,
+    prepare_plot_dataset,
+    visible_mask,
+)
 from gwaspeek.terminal_canvas import CanvasStyle, TerminalCanvas
 
 
@@ -245,6 +251,23 @@ def _draw_y_tick_labels(
             canvas.set(i, cy, ch)
 
 
+def _density_glyph(count: int, chrom: int, unicode: bool) -> str:
+    odd_chrom = (int(chrom) % 2) == 1
+    if count <= 1:
+        if unicode:
+            return "●" if odd_chrom else "○"
+        return "*" if odd_chrom else "o"
+    if count == 2:
+        return "◉" if unicode else "O"
+    return "█" if unicode else "#"
+
+
+def density_legend(unicode: bool) -> str:
+    if unicode:
+        return "density 1x ●/○  2x ◉  3+x █"
+    return "density 1x */o  2x O  3+x #"
+
+
 def _draw_gene_track(
     canvas: TerminalCanvas,
     genes: List[Tuple[float, float, str]],
@@ -381,36 +404,28 @@ def _draw_lead_annotation(
             canvas.set(start_x + i, max(1, cy - 2), ch)
 
 
-# Extra cumulative span after the last variant on each chromosome so zoomed views
-# can reach telomeric genes without the next chromosome starting immediately adjacent.
-CHR_LAYOUT_END_PAD_BP = 500_000.0
+def _build_cumulative_x(df: pd.DataFrame) -> Tuple[pd.Series, Dict[int, float], Dict[int, float]]:
+    layout = build_genome_layout(df)
+    if len(df) == 0:
+        xvals = pd.Series(dtype=float, index=df.index)
+    else:
+        xvals = pd.Series(
+            df["POS"].to_numpy(dtype=float, copy=False) + df["CHR"].map(layout.offsets).to_numpy(dtype=float),
+            index=df.index,
+        )
+    return xvals, layout.offsets, layout.chr_sizes
 
 
-def _build_cumulative_x(
-    df: pd.DataFrame, chr_end_pad_bp: float = CHR_LAYOUT_END_PAD_BP
-) -> Tuple[pd.Series, Dict[int, float], Dict[int, float]]:
-    chr_max = df.groupby("CHR")["POS"].max().sort_index()
-    offset = 0.0
-    offsets: Dict[int, float] = {}
-    chr_sizes: Dict[int, float] = {}
-    pad = float(chr_end_pad_bp)
-    for chrom, max_pos in chr_max.items():
-        ichrom = int(chrom)
-        offsets[ichrom] = offset
-        span = float(max_pos) + pad
-        chr_sizes[ichrom] = span
-        offset += span
-    xvals = df["POS"].astype(float) + df["CHR"].map(offsets).astype(float)
-    return xvals, offsets, chr_sizes
-
-
-def genome_layout(
-    df: pd.DataFrame, chr_end_pad_bp: float = CHR_LAYOUT_END_PAD_BP
-) -> Tuple[pd.Series, Dict[int, float], Dict[int, float], float, float]:
-    xvals, offsets, chr_sizes = _build_cumulative_x(df, chr_end_pad_bp=chr_end_pad_bp)
-    x_min = float(xvals.min())
-    x_max = float(xvals.max())
-    return xvals, offsets, chr_sizes, x_min, x_max
+def genome_layout(df: pd.DataFrame) -> Tuple[pd.Series, Dict[int, float], Dict[int, float], float, float]:
+    layout = build_genome_layout(df)
+    if len(df) == 0:
+        xvals = pd.Series(dtype=float, index=df.index)
+    else:
+        xvals = pd.Series(
+            df["POS"].to_numpy(dtype=float, copy=False) + df["CHR"].map(layout.offsets).to_numpy(dtype=float),
+            index=df.index,
+        )
+    return xvals, layout.offsets, layout.chr_sizes, layout.x_min, layout.x_max
 
 
 def render_manhattan(
@@ -427,10 +442,15 @@ def render_manhattan(
     lead_variant: Tuple[float, float, str] | None = None,
     gene_track: List[Tuple[float, float, str]] | None = None,
     force_gene_panel: bool = False,
+    prepared: PlotDataset | None = None,
+    visible_rows: np.ndarray | None = None,
 ) -> str:
-    work = df.copy()
-    work["x"], offsets, chr_sizes, global_x_min, global_x_max = genome_layout(work)
-    global_y_hi = float(np.nanmax(work["mlog10p"].to_numpy()))
+    data = prepared or prepare_plot_dataset(df)
+    offsets = data.layout.offsets
+    chr_sizes = data.layout.chr_sizes
+    global_x_min = data.layout.x_min
+    global_x_max = data.layout.x_max
+    global_y_hi = float(np.nanmax(data.mlog10p)) if len(data.mlog10p) > 0 else float(y_min)
     sig_logp = float(-np.log10(sig_level))
 
     x_min = global_x_min if x_start is None else max(global_x_min, float(x_start))
@@ -440,11 +460,13 @@ def render_manhattan(
         x_max = global_x_max
     if title is None:
         title = f"Manhattan {viewport_chr_label(x_min, x_max, offsets, chr_sizes)}"
-    visible = work[(work["x"] >= x_min) & (work["x"] <= x_max)]
+    mask = visible_rows if visible_rows is not None else visible_mask(data, x_min, x_max)
+    if len(mask) != len(data.x):
+        raise ValueError("Visible row mask does not match prepared dataset length.")
 
     if ymax is None:
-        if len(visible) > 0:
-            vis_hi = float(np.nanmax(visible["mlog10p"].to_numpy()))
+        if np.any(mask):
+            vis_hi = float(np.nanmax(data.mlog10p[mask]))
         else:
             vis_hi = global_y_hi
         y_floor = vis_hi
@@ -454,8 +476,7 @@ def render_manhattan(
 
     canvas = TerminalCanvas(width=width, height=height, style=CanvasStyle(unicode=unicode))
     canvas.draw_axes()
-    canvas.label_top(title)
-    canvas.label_top_right("gwaspeek")
+    canvas.label_top_pair(title, "gwaspeek")
 
     x_plot0 = 7
     axis_y = canvas.height - 2
@@ -480,30 +501,34 @@ def render_manhattan(
     sorted_chroms = sorted(chr_sizes.keys())
     chr_boundaries = _chr_start_boundaries_in_view(x_min, x_max, sorted_chroms, offsets)
 
-    point_rows: List[Tuple[float, float, int]] = []
-    for xv, y_raw, chrom in zip(visible["x"], visible["mlog10p"], visible["CHR"]):
-        yv = min(float(y_raw), y_scale)
-        px = 0.0 if x_max == x_min else (float(xv) - x_min) / (x_max - x_min)
+    cells: Dict[tuple[int, int], tuple[int, int, float]] = {}
+    if np.any(mask):
+        vis_x = data.x[mask]
+        vis_y = data.mlog10p[mask]
+        vis_chr = data.chrom[mask]
+        vis_y_clipped = np.minimum(vis_y, y_scale)
+        if x_max == x_min:
+            px = np.zeros_like(vis_x)
+        else:
+            px = np.clip((vis_x - x_min) / (x_max - x_min), 0.0, 1.0)
         if denom <= 0:
-            py = 0.0
+            py = np.zeros_like(vis_y_clipped)
         else:
-            py = max(0.0, min(1.0, (yv - float(y_min)) / denom))
-        point_rows.append((px, py, int(chrom)))
-    chr_markers: Dict[int, str] = {}
-    for idx, chrom in enumerate(sorted_chroms):
-        if unicode:
-            chr_markers[chrom] = "●" if idx % 2 == 0 else "○"
-        else:
-            chr_markers[chrom] = "*" if idx % 2 == 0 else "o"
-    occupied: set[tuple[int, int]] = set()
-    default_dot = "●" if unicode else "*"
-    for px, py, chrom in point_rows:
-        cx = x_plot0 + int(max(0.0, min(1.0, px)) * w)
-        cy = y0 - int(max(0.0, min(1.0, py)) * h)
-        if (cx, cy) in occupied:
-            continue
-        occupied.add((cx, cy))
-        canvas.set(cx, cy, chr_markers.get(chrom, default_dot))
+            py = np.clip((vis_y_clipped - float(y_min)) / denom, 0.0, 1.0)
+
+        cx = x_plot0 + np.floor(px * w).astype(int)
+        cy = y0 - np.floor(py * h).astype(int)
+        flat = (cy * canvas.width) + cx
+        order = np.lexsort((vis_y_clipped, flat))
+        flat_sorted = flat[order]
+        _, first_idx, counts = np.unique(flat_sorted, return_index=True, return_counts=True)
+        best_idx = order[first_idx + counts - 1]
+        for cell_flat, count, chrom in zip(flat[best_idx], counts, vis_chr[best_idx]):
+            cell_y = int(cell_flat // canvas.width)
+            cell_x = int(cell_flat % canvas.width)
+            cells[(cell_x, cell_y)] = (int(count), int(chrom), 0.0)
+    for (cx, cy), (count, chrom, _) in cells.items():
+        canvas.set(cx, cy, _density_glyph(count, chrom, unicode))
 
     if lead_variant is not None:
         lead_x, lead_y, lead_label = lead_variant

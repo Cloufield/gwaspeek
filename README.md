@@ -4,6 +4,7 @@
 - **Interactive** terminal Manhattan plots for GWAS summary statistics: move the view along the genome and zoom in a real TTY, inspect regions, and optionally show a protein-coding **gene track** when the view is a single chromosome and spans **≤ 1 Mb**.
 - Static one-shot renders (`-s`) for logs or CI.
 - Column names are **auto-detected** from bundled [formatbook](https://github.com/Cloufield/formatbook)-style aliases.
+- Chromosome layout uses full canonical human chromosome lengths for **GRCh37** or **GRCh38**.
 - Drawing uses **Unicode** or **`--ascii`**.
 
 **Note:** Intended for **quick checks** of summary statistics. Plotted **positions are not exact** on screen because the terminal has **limited pixels** (resolution).
@@ -12,8 +13,8 @@
 
 ## Interactive mode (default)
 
-**Interactive mode** (default) opens the live TTY viewer when you pass one input path—**`gwaspeek FILE`** or **`gwaspeek -i FILE`**. 
-In the viewer, **`A`** / **`D`** move the plot left or right along the genome (without changing zoom), and **`W`** / **`S`** zoom out and in.
+**Interactive mode** (default) opens the live TTY viewer when you pass one input path—**`gwaspeek FILE`** or **`gwaspeek -i FILE`**.
+In the viewer, **`a`** / **`d`** pan the plot in smaller steps (and **`A`** / **`D`** pan in larger steps). **`w`** / **`s`** zoom out and in gently; **`W`** / **`S`** use the original coarser zoom. Arrow keys and **`+`** / **`-`** mirror the fine controls, the mouse wheel zooms at the hovered cursor position, and **`g`** jumps directly to a typed region such as `chr3:45000000-46000000`.
 
 ### Try it
 
@@ -27,8 +28,14 @@ gwaspeek t2d_bbj_p1e-5.txt.gz
 
 | Key | Action |
 |-----|--------|
-| `A` / `D` | Move view left/right along genome |
-| `W` / `S` | Zoom out / in |
+| `a` / `d` | Pan view left/right (fine) |
+| `A` / `D` | Pan view left/right (coarse) |
+| `w` / `s` | Zoom out / in (fine) |
+| `W` / `S` | Zoom out / in (coarse) |
+| Arrow keys | Fine pan / zoom |
+| `+` / `-` | Zoom in / out (fine) |
+| Mouse wheel | Zoom at cursor position |
+| `g` | Jump to region (`chr:start-end`) |
 | `l` | Toggle lead-variant labels |
 | `t` | Cycle gene track: `37` → `38` → `off` |
 | `v` | Toggle variants-in-view list |
@@ -36,7 +43,8 @@ gwaspeek t2d_bbj_p1e-5.txt.gz
 | `r` | Reset to full genome |
 | `q` | Quit |
 
-The gene track appears only on a **single-chromosome** view with span **≤ 1 Mb**. **`--gtf`** and **`--gtf38`** (see [CLI reference](#cli-reference)) apply **only** in interactive mode; static **`-s`** output ignores them.
+The gene track appears only on a **single-chromosome** view with span **≤ 1 Mb**. **`--gtf`** and **`--gtf38`** (see [CLI reference](#cli-reference)) apply **only** in interactive mode; static **`-s`** output ignores them. **`--build`** sets the canonical chromosome-length layout, and interactive **`t`** build switching keeps the layout aligned with the active gene-track build.
+The interactive viewer uses an alternate terminal screen, lazy-loads gene annotations by genome build, and renders dense cells with heavier glyphs instead of simply dropping overlapping points.
 
 Common sizing and column flags work in interactive mode too (for example **`--width`**, **`--height`**, **`--skip`**, **`--sig-level`**):
 
@@ -127,6 +135,8 @@ Tabular GWAS summary stats (TSV/CSV or other delimiter via **`--sep`**).
 | `--width INT` | int | `100` | Width (chars): static size; interactive initial/fallback. |
 | `--height INT` | int | `28` | Height (lines): static size; interactive initial/fallback. |
 | `--ascii` | flag | off | ASCII drawing instead of Unicode. |
+| `--build {37,38}` | choice | `37` | Canonical chromosome-length layout / default genome build. |
+| `--no-color` | flag | off | Disable ANSI color in interactive status/footer lines. |
 | `--sig-level FLOAT` | float | `5e-8` | Genome-wide line in `P` space. |
 | `--ymax FLOAT` | float | auto | Y-axis max in `-log10(P)`. |
 | `--gtf PATH` | path | bundled GRCh37 | GTF (`.gz` ok); interactive gene track. |
@@ -142,6 +152,7 @@ gwaspeek -i tests/fixtures/sumstats_small.tsv
 
 # Static
 gwaspeek -s tests/fixtures/sumstats_small.tsv
+gwaspeek -s tests/fixtures/sumstats_small.tsv --build 38
 
 # Explicit columns (flags are the same in interactive mode)
 gwaspeek -s sumstats.tsv --chr CHROM --pos BP --p PVAL

@@ -7,6 +7,7 @@ from importlib.metadata import PackageNotFoundError, version
 from gwaspeek.interactive import default_gtf_path, run_interactive_manhattan
 from gwaspeek.io import load_sumstats
 from gwaspeek.manhattan import render_manhattan
+from gwaspeek.plot_state import prepare_plot_dataset
 from gwaspeek.preprocess import preprocess_sumstats
 
 
@@ -77,6 +78,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--width", type=int, default=100)
     parser.add_argument("--height", type=int, default=28)
     parser.add_argument("--ascii", action="store_true", help="Use ASCII fallback")
+    parser.add_argument(
+        "--build",
+        choices=["37", "38"],
+        default="37",
+        help="Reference build for chromosome lengths/layout (default: 37)",
+    )
+    parser.add_argument("--no-color", action="store_true", help="Disable ANSI color in interactive mode")
     parser.add_argument("--sig-level", type=float, default=5e-8)
     parser.add_argument("--ymax", type=float, default=None)
     parser.add_argument(
@@ -134,6 +142,7 @@ def main(argv: list[str] | None = None) -> None:
         mlog10p_col=args.mlog10p_col,
     )
     clean = preprocess_sumstats(df, skip=args.skip)
+    prepared = prepare_plot_dataset(clean, build=args.build)
     use_unicode = not args.ascii
 
     if mode == "static":
@@ -145,6 +154,7 @@ def main(argv: list[str] | None = None) -> None:
             ymax=args.ymax,
             unicode=use_unicode,
             y_min=float(args.skip),
+            prepared=prepared,
         )
         print(out)
         return
@@ -159,6 +169,8 @@ def main(argv: list[str] | None = None) -> None:
         y_min=float(args.skip),
         gtf_path=args.gtf,
         gtf38_path=args.gtf38,
+        build=args.build,
+        color=not args.no_color,
     )
 
 

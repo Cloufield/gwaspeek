@@ -26,6 +26,11 @@ def _normalize_chr_token(value: object) -> Optional[int]:
     return iv
 
 
+def _chr_max_pos_map(df: pd.DataFrame) -> Dict[int, float]:
+    chr_max = df.groupby("CHR")["POS"].max().sort_index()
+    return {int(chrom): float(max_pos) for chrom, max_pos in chr_max.items()}
+
+
 def preprocess_sumstats(df: pd.DataFrame, skip: float = 0.0) -> pd.DataFrame:
     """Convert CHR/POS/P or CHR/POS/MLOG10P and compute mlog10p."""
     out = df.copy()
@@ -45,6 +50,9 @@ def preprocess_sumstats(df: pd.DataFrame, skip: float = 0.0) -> pd.DataFrame:
     else:
         raise ValueError("Expected column P or MLOG10P after loading summary statistics.")
     out["CHR"] = out["CHR"].astype(int)
+    chr_max_pos = _chr_max_pos_map(out)
     if skip > 0:
         out = out[out["mlog10p"] >= float(skip)]
-    return out.sort_values(["CHR", "POS"]).reset_index(drop=True)
+    out = out.sort_values(["CHR", "POS"]).reset_index(drop=True)
+    out.attrs["chr_max_pos"] = chr_max_pos
+    return out

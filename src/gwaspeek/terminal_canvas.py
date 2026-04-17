@@ -62,6 +62,22 @@ class TerminalCanvas:
         for i, ch in enumerate(label):
             self.set(i, 0, ch)
 
+    def label_top_pair(self, left: str, right: str, gap: int = 2) -> None:
+        line = [" " for _ in range(self.width)]
+        right_label = right[: self.width]
+        right_start = max(0, self.width - len(right_label))
+        for i, ch in enumerate(right_label):
+            if right_start + i < self.width:
+                line[right_start + i] = ch
+
+        max_left_width = max(0, right_start - max(0, gap))
+        left_label = left[:max_left_width].rstrip() if max_left_width > 0 else ""
+        for i, ch in enumerate(left_label):
+            line[i] = ch
+
+        for i, ch in enumerate(line):
+            self.set(i, 0, ch)
+
     def label_top_right(self, text: str) -> None:
         label = text[: self.width]
         start = max(0, self.width - len(label))
