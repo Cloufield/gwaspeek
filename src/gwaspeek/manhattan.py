@@ -32,19 +32,29 @@ def stdout_color_supported() -> bool:
     )
 
 
-def _chr_alternating_sgr(chrom: int, chr_order: Dict[int, int]) -> str:
+def _chr_alternating_sgr(chrom: int, chr_order: Dict[int, int], *, light_theme: bool = False) -> str:
     """ANSI SGR foreground for alternating colors by chromosome order (even/odd index)."""
     idx = chr_order.get(int(chrom))
     if idx is None:
         return "39"
-    # Cyan (bluish) vs bright white; distinct for neighboring chromosomes.
+    if light_theme:
+        # Darker hues for light terminal backgrounds (97/36 wash out on white).
+        return "34" if (idx % 2) == 0 else "35"
+    # Cyan vs bright white on dark backgrounds.
     return "36" if (idx % 2) == 0 else "97"
 
 
-def _ansi_paint_glyph(glyph: str, chrom: int, chr_order: Dict[int, int], color: bool) -> str:
+def _ansi_paint_glyph(
+    glyph: str,
+    chrom: int,
+    chr_order: Dict[int, int],
+    color: bool,
+    *,
+    light_theme: bool = False,
+) -> str:
     if not color:
         return glyph
-    code = _chr_alternating_sgr(chrom, chr_order)
+    code = _chr_alternating_sgr(chrom, chr_order, light_theme=light_theme)
     return f"\x1b[{code}m{glyph}\x1b[0m"
 
 
@@ -488,6 +498,7 @@ def render_manhattan(
     prepared: PlotDataset | None = None,
     visible_rows: np.ndarray | None = None,
     color: bool = False,
+    light_theme: bool = False,
 ) -> str:
     data = prepared or prepare_plot_dataset(df)
     offsets = data.layout.offsets
@@ -577,7 +588,7 @@ def render_manhattan(
             cells[(cell_x, cell_y)] = (int(count), int(chrom), 0.0)
     for (cx, cy), (count, chrom, _) in cells.items():
         glyph = _density_glyph(count, unicode)
-        canvas.set(cx, cy, _ansi_paint_glyph(glyph, chrom, chr_order, color))
+        canvas.set(cx, cy, _ansi_paint_glyph(glyph, chrom, chr_order, color, light_theme=light_theme))
 
     if lead_variant is not None:
         lead_x, lead_y, lead_label = lead_variant

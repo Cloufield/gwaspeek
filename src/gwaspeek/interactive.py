@@ -167,7 +167,7 @@ def region_to_window(region: str, offsets: dict[int, float], chr_sizes: dict[int
 
 def _help_text() -> str:
     return (
-        "Keys: q quit  h help  v vars  t 37|38|off  g jump  l lead  "
+        "Keys: q quit  h help  v vars  t 37|38|off  g jump  l lead  m theme  "
         "r reset  a/d pan (A/D fast)  w/s zoom (W/S fast)  wheel@cursor  +/-"
     )
 
@@ -478,6 +478,7 @@ def _render_frame(
     color: bool = False,
     *,
     non_human: bool = False,
+    light_theme: bool = False,
 ) -> tuple[str, FrameSummary]:
     mask, lead_variant, gene_track, summary, title = _inspect_view(
         data,
@@ -505,6 +506,7 @@ def _render_frame(
         prepared=data,
         visible_rows=mask,
         color=color,
+        light_theme=light_theme,
     )
     return frame, summary
 
@@ -678,6 +680,7 @@ def _render_help_screen() -> str:
         "  t : cycle gene track mode (37 -> 38 -> off)",
         "  v : toggle variants-in-view list",
         "  h : toggle this help",
+        "  m : toggle dark / light palette (plot + status colors)",
         "  r : reset to full genome view",
         "  q : quit",
         "",
@@ -778,6 +781,7 @@ def _status_line(
     width: int,
     color: bool,
     *,
+    light_theme: bool = False,
     non_human: bool = False,
 ) -> str:
     parts = [
@@ -796,10 +800,22 @@ def _status_line(
     if notice:
         parts.append(notice)
     line = _truncate_line(" | ".join(parts), width)
-    return _ansi(line, "33" if notice else "36", color)
+    # Light palette: higher-contrast hues on pale backgrounds.
+    if notice:
+        sgr = "31" if light_theme else "33"
+    else:
+        sgr = "34" if light_theme else "36"
+    return _ansi(line, sgr, color)
 
 
-def _footer_help_line(width: int, unicode: bool, color: bool, sig_level: float) -> str:
+def _footer_help_line(
+    width: int,
+    unicode: bool,
+    color: bool,
+    sig_level: float,
+    *,
+    light_theme: bool = False,
+) -> str:
     """Two-line footer; keys and density/sig legend share the same ANSI style."""
     line1 = _truncate_line(_help_text(), width)
     line2 = _truncate_line(
@@ -807,7 +823,9 @@ def _footer_help_line(width: int, unicode: bool, color: bool, sig_level: float) 
         width,
     )
     text = f"{line1}\n{line2}"
-    return _ansi(text, "2", color)
+    # SGR 2 (faint) is often unsupported or invisible; use explicit greys (90 dark / 30 light).
+    muted = "30" if light_theme else "90"
+    return _ansi(text, muted, color)
 
 
 def _prompt_for_region(
@@ -865,6 +883,7 @@ def run_interactive_manhattan(
     show_lead = True
     track_mode = "off" if non_human else base_build
     view_mode = "plot"
+    light_theme = False
     notice: str | None = None
     data = datasets[_active_build(track_mode, base_build)]
     offsets = data.layout.offsets
@@ -921,10 +940,13 @@ def run_interactive_manhattan(
                     notice,
                     width,
                     color=False,
+                    light_theme=False,
                     non_human=non_human,
                 )
             )
-            print(_footer_help_line(width, unicode, color=False, sig_level=sig_level))
+            print(
+                _footer_help_line(width, unicode, color=False, sig_level=sig_level, light_theme=False)
+            )
             key = sys.stdin.read(1)
             notice = None
             if not key:
@@ -968,10 +990,41 @@ def run_interactive_manhattan(
             resized = last_term is not None and term_sig != last_term
             last_term = term_sig
 
+            # Apply input before paint so this frame matches the key (avoids one-key lag on m/h/v/...).
+            active_build = _active_build(track_mode, base_build)
+            if key is not None:
+                offsets_pre = datasets[active_build].layout.offsets
+                chr_sizes_pre = datasets[active_build].layout.chr_sizes
+                if view_mode == "plot" and _apply_mouse_wheel(key, viewport, frame_width, frame_height):
+                    pass
+                elif key in {"h", "H"}:
+                    view_mode = "plot" if view_mode == "help" else "help"
+                elif key in {"v", "V"}:
+                    view_mode = "plot" if view_mode == "variants" else "variants"
+                elif key in {"g", "G"}:
+                    view_mode = "plot"
+                    notice = _prompt_for_region(fd, old_settings, viewport, offsets_pre, chr_sizes_pre)
+                elif key in {"m", "M"}:
+                    light_theme = not light_theme
+                else:
+                    old_build = active_build
+                    keep_going, show_lead, track_mode = _apply_key(
+                        key, viewport, show_lead, track_mode, non_human=non_human
+                    )
+                    new_build = _active_build(track_mode, base_build)
+                    if new_build != old_build:
+                        _remap_viewport_to_build(viewport, datasets[old_build], datasets[new_build])
+                    if not keep_going:
+                        break
+
+            active_build = _active_build(track_mode, base_build)
+            data = datasets[active_build]
+
             ui_snap = (
                 view_mode,
                 show_lead,
                 track_mode,
+                light_theme,
                 viewport.start,
                 viewport.end,
                 viewport.width,
@@ -979,10 +1032,6 @@ def run_interactive_manhattan(
             if painted and key is None and not resized and ui_snap == last_ui_snap:
                 continue
 
-            active_build = _active_build(track_mode, base_build)
-            data = datasets[active_build]
-            offsets = data.layout.offsets
-            chr_sizes = data.layout.chr_sizes
             genes_by_chr = _genes_for_view(
                 gene_store, track_mode, viewport, view_mode, non_human=non_human
             )
@@ -1016,6 +1065,7 @@ def run_interactive_manhattan(
                     y_min,
                     color=color_enabled,
                     non_human=non_human,
+                    light_theme=light_theme,
                 )
             sys.stdout.write(body)
             if not body.endswith("\n"):
@@ -1029,47 +1079,25 @@ def run_interactive_manhattan(
                     notice,
                     frame_width,
                     color_enabled,
+                    light_theme=light_theme,
                     non_human=non_human,
                 )
             )
             sys.stdout.write("\n")
-            sys.stdout.write(_footer_help_line(frame_width, unicode, color_enabled, sig_level))
+            sys.stdout.write(
+                _footer_help_line(
+                    frame_width,
+                    unicode,
+                    color_enabled,
+                    sig_level,
+                    light_theme=light_theme,
+                )
+            )
             sys.stdout.flush()
 
             painted = True
             notice = None
-
-            if key is None:
-                last_ui_snap = ui_snap
-                continue
-            if view_mode == "plot" and _apply_mouse_wheel(key, viewport, frame_width, frame_height):
-                pass
-            elif key in {"h", "H"}:
-                view_mode = "plot" if view_mode == "help" else "help"
-            elif key in {"v", "V"}:
-                view_mode = "plot" if view_mode == "variants" else "variants"
-            elif key in {"g", "G"}:
-                view_mode = "plot"
-                notice = _prompt_for_region(fd, old_settings, viewport, offsets, chr_sizes)
-            else:
-                old_build = active_build
-                keep_going, show_lead, track_mode = _apply_key(
-                    key, viewport, show_lead, track_mode, non_human=non_human
-                )
-                new_build = _active_build(track_mode, base_build)
-                if new_build != old_build:
-                    _remap_viewport_to_build(viewport, datasets[old_build], datasets[new_build])
-                if not keep_going:
-                    break
-
-            last_ui_snap = (
-                view_mode,
-                show_lead,
-                track_mode,
-                viewport.start,
-                viewport.end,
-                viewport.width,
-            )
+            last_ui_snap = ui_snap
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         _leave_alt_screen()

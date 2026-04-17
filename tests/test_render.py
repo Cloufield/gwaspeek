@@ -59,6 +59,13 @@ def test_manhattan_color_alternates_by_chromosome() -> None:
     assert "\x1b[36m" in txt or "\x1b[97m" in txt
 
 
+def test_manhattan_color_light_theme_alternates_by_chromosome() -> None:
+    txt = render_manhattan(
+        _prepared_manhattan(), width=60, height=18, unicode=False, color=True, light_theme=True
+    )
+    assert "\x1b[34m" in txt or "\x1b[35m" in txt
+
+
 def test_manhattan_density_marks_overlapping_cells() -> None:
     raw = pd.DataFrame(
         {
