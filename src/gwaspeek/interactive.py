@@ -418,7 +418,11 @@ def _inspect_view(
     show_lead: bool,
     show_track: bool,
     genes_by_chr: Dict[int, List[Tuple[int, int, str]]],
+    *,
+    non_human: bool = False,
 ) -> tuple[np.ndarray, Tuple[float, float, str] | None, List[Tuple[float, float, str]], FrameSummary, str]:
+    if non_human:
+        show_track = False
     mask = visible_mask(data, viewport.start, viewport.end)
     idx = np.flatnonzero(mask)
     n_vars = int(idx.size)
@@ -471,8 +475,12 @@ def _render_frame(
     unicode: bool,
     y_min: float,
     color: bool = False,
+    *,
+    non_human: bool = False,
 ) -> tuple[str, FrameSummary]:
-    mask, lead_variant, gene_track, summary, title = _inspect_view(data, viewport, show_lead, show_track, genes_by_chr)
+    mask, lead_variant, gene_track, summary, title = _inspect_view(
+        data, viewport, show_lead, show_track, genes_by_chr, non_human=non_human
+    )
     frame = render_manhattan(
         data.df,
         width=width,
@@ -599,7 +607,14 @@ def _remap_viewport_to_build(viewport: Viewport, old_data: PlotDataset, new_data
     viewport._clamp()
 
 
-def _apply_key(key: str, viewport: Viewport, show_lead: bool, track_mode: str) -> Tuple[bool, bool, str]:
+def _apply_key(
+    key: str,
+    viewport: Viewport,
+    show_lead: bool,
+    track_mode: str,
+    *,
+    non_human: bool = False,
+) -> Tuple[bool, bool, str]:
     if key in {"q", "Q"}:
         return False, show_lead, track_mode
     if key in {"r", "R"}:
@@ -608,6 +623,8 @@ def _apply_key(key: str, viewport: Viewport, show_lead: bool, track_mode: str) -
     if key in {"l", "L"}:
         return True, (not show_lead), track_mode
     if key in {"t", "T"}:
+        if non_human:
+            return True, show_lead, "off"
         return True, show_lead, _next_track_mode(track_mode)
     if key in {"a", "\x1b[D"}:
         viewport.pan(-PAN_FRAC_FINE * viewport.width)
@@ -696,8 +713,10 @@ def _genes_for_view(
     track_mode: str,
     viewport: Viewport,
     view_mode: str,
+    *,
+    non_human: bool = False,
 ) -> Dict[int, List[Tuple[int, int, str]]]:
-    if track_mode == "off":
+    if non_human or track_mode == "off":
         return {}
     if view_mode == "variants" or viewport.width <= 1_000_000.0:
         return store.get(track_mode)
@@ -725,7 +744,15 @@ def _truncate_line(text: str, width: int) -> str:
     return f"{text[: width - 3].rstrip()}..."
 
 
-def _format_track_state(track_mode: str, store: GeneTrackStore, summary: FrameSummary) -> str:
+def _format_track_state(
+    track_mode: str,
+    store: GeneTrackStore,
+    summary: FrameSummary,
+    *,
+    non_human: bool = False,
+) -> str:
+    if non_human:
+        return "track off (non-human)"
     if track_mode == "off":
         return "track off"
     if not store.exists(track_mode):
@@ -744,6 +771,8 @@ def _status_line(
     notice: str | None,
     width: int,
     color: bool,
+    *,
+    non_human: bool = False,
 ) -> str:
     parts = [
         f"build {build}",
@@ -751,7 +780,7 @@ def _status_line(
         f"view {summary.view_size}",
         f"vars {summary.n_vars}",
         f"chrs {summary.n_chrs}",
-        _format_track_state(track_mode, store, summary),
+        _format_track_state(track_mode, store, summary, non_human=non_human),
     ]
     if summary.lead_label:
         lead = summary.lead_label
@@ -809,6 +838,7 @@ def run_interactive_manhattan(
     gtf38_path: str | None = None,
     build: str = "37",
     color: bool = True,
+    non_human: bool = False,
 ) -> None:
     if not gtf_path:
         gtf_path = default_gtf_path()
@@ -817,11 +847,11 @@ def run_interactive_manhattan(
 
     base_build = normalize_build(build)
     datasets = {
-        "37": prepare_plot_dataset(df, build="37"),
-        "38": prepare_plot_dataset(df, build="38"),
+        "37": prepare_plot_dataset(df, build="37", data_driven_lengths=non_human),
+        "38": prepare_plot_dataset(df, build="38", data_driven_lengths=non_human),
     }
     show_lead = True
-    track_mode = base_build
+    track_mode = "off" if non_human else base_build
     view_mode = "plot"
     notice: str | None = None
     data = datasets[_active_build(track_mode, base_build)]
@@ -836,8 +866,12 @@ def run_interactive_manhattan(
             data = datasets[active_build]
             offsets = data.layout.offsets
             chr_sizes = data.layout.chr_sizes
-            genes_by_chr = _genes_for_view(gene_store, track_mode, viewport, view_mode)
-            mask, _, _, summary, _ = _inspect_view(data, viewport, show_lead, track_mode != "off", genes_by_chr)
+            genes_by_chr = _genes_for_view(
+                gene_store, track_mode, viewport, view_mode, non_human=non_human
+            )
+            mask, _, _, summary, _ = _inspect_view(
+                data, viewport, show_lead, track_mode != "off", genes_by_chr, non_human=non_human
+            )
             _clear_screen()
             if view_mode == "help":
                 print(_render_help_screen())
@@ -857,9 +891,21 @@ def run_interactive_manhattan(
                     unicode,
                     y_min,
                     color=False,
+                    non_human=non_human,
                 )
                 print(frame)
-            print(_status_line(summary, active_build, track_mode, gene_store, notice, width, color=False))
+            print(
+                _status_line(
+                    summary,
+                    active_build,
+                    track_mode,
+                    gene_store,
+                    notice,
+                    width,
+                    color=False,
+                    non_human=non_human,
+                )
+            )
             print(_footer_help_line(width, unicode, color=False))
             key = sys.stdin.read(1)
             notice = None
@@ -872,7 +918,9 @@ def run_interactive_manhattan(
                 view_mode = "plot" if view_mode == "variants" else "variants"
                 continue
             old_build = active_build
-            keep_going, show_lead, track_mode = _apply_key(key, viewport, show_lead, track_mode)
+            keep_going, show_lead, track_mode = _apply_key(
+                key, viewport, show_lead, track_mode, non_human=non_human
+            )
             new_build = _active_build(track_mode, base_build)
             if new_build != old_build:
                 _remap_viewport_to_build(viewport, datasets[old_build], datasets[new_build])
@@ -896,8 +944,12 @@ def run_interactive_manhattan(
             term_size = shutil.get_terminal_size(fallback=(width, height + 3))
             frame_width = max(20, term_size.columns)
             frame_height = max(8, term_size.lines - 2)
-            genes_by_chr = _genes_for_view(gene_store, track_mode, viewport, view_mode)
-            mask, _, _, summary, _ = _inspect_view(data, viewport, show_lead, track_mode != "off", genes_by_chr)
+            genes_by_chr = _genes_for_view(
+                gene_store, track_mode, viewport, view_mode, non_human=non_human
+            )
+            mask, _, _, summary, _ = _inspect_view(
+                data, viewport, show_lead, track_mode != "off", genes_by_chr, non_human=non_human
+            )
 
             _clear_screen()
             if view_mode == "help":
@@ -918,11 +970,23 @@ def run_interactive_manhattan(
                     unicode,
                     y_min,
                     color=color_enabled,
+                    non_human=non_human,
                 )
             sys.stdout.write(body)
             if not body.endswith("\n"):
                 sys.stdout.write("\n")
-            sys.stdout.write(_status_line(summary, active_build, track_mode, gene_store, notice, frame_width, color_enabled))
+            sys.stdout.write(
+                _status_line(
+                    summary,
+                    active_build,
+                    track_mode,
+                    gene_store,
+                    notice,
+                    frame_width,
+                    color_enabled,
+                    non_human=non_human,
+                )
+            )
             sys.stdout.write("\n")
             sys.stdout.write(_footer_help_line(frame_width, unicode, color_enabled))
             sys.stdout.flush()
@@ -944,7 +1008,9 @@ def run_interactive_manhattan(
                 notice = _prompt_for_region(fd, old_settings, viewport, offsets, chr_sizes)
                 continue
             old_build = active_build
-            keep_going, show_lead, track_mode = _apply_key(key, viewport, show_lead, track_mode)
+            keep_going, show_lead, track_mode = _apply_key(
+                key, viewport, show_lead, track_mode, non_human=non_human
+            )
             new_build = _active_build(track_mode, base_build)
             if new_build != old_build:
                 _remap_viewport_to_build(viewport, datasets[old_build], datasets[new_build])

@@ -169,6 +169,14 @@ def test_apply_key_toggles_lead_annotation() -> None:
     assert track_mode == "37"
 
 
+def test_apply_key_non_human_ignores_gene_track_toggle() -> None:
+    _, _, x_min, x_max = _layout()
+    vp = Viewport(global_min=x_min, global_max=x_max, start=x_min, end=x_max)
+    keep, show_lead, track_mode = _apply_key("t", vp, True, "off", non_human=True)
+    assert keep is True
+    assert track_mode == "off"
+
+
 def test_apply_key_cycles_gene_track_build_modes() -> None:
     _, _, x_min, x_max = _layout()
     vp = Viewport(global_min=x_min, global_max=x_max, start=x_min, end=x_max)

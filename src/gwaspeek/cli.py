@@ -119,6 +119,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Disable ANSI colors (interactive status/footer and static plot chromosome colors)",
     )
     parser.add_argument(
+        "--nh",
+        "--not-human",
+        dest="non_human",
+        action="store_true",
+        help=(
+            "Non-human / non-GRCh layout: chromosome spans follow the observed max position in the "
+            "data (no reference lengths for X or autosomes), and the gene track is disabled"
+        ),
+    )
+    parser.add_argument(
         "--sig-level",
         type=float,
         default=5e-8,
@@ -184,7 +194,9 @@ def main(argv: list[str] | None = None) -> None:
         mlog10p_col=args.mlog10p_col,
     )
     clean = preprocess_sumstats(df, skip=args.skip)
-    prepared = prepare_plot_dataset(clean, build=args.build)
+    prepared = prepare_plot_dataset(
+        clean, build=args.build, data_driven_lengths=args.non_human
+    )
     use_unicode = not args.ascii
 
     if mode == "static":
@@ -215,6 +227,7 @@ def main(argv: list[str] | None = None) -> None:
         gtf38_path=args.gtf38,
         build=args.build,
         color=not args.no_color,
+        non_human=args.non_human,
     )
 
 

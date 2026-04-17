@@ -431,8 +431,13 @@ def _draw_lead_annotation(
             canvas.set(start_x + i, label_y, ch)
 
 
-def _build_cumulative_x(df: pd.DataFrame) -> Tuple[pd.Series, Dict[int, float], Dict[int, float]]:
-    layout = build_genome_layout(df)
+def _build_cumulative_x(
+    df: pd.DataFrame,
+    *,
+    build: str | None = None,
+    data_driven_lengths: bool = False,
+) -> Tuple[pd.Series, Dict[int, float], Dict[int, float]]:
+    layout = build_genome_layout(df, build=build, data_driven_lengths=data_driven_lengths)
     if len(df) == 0:
         xvals = pd.Series(dtype=float, index=df.index)
     else:
@@ -443,8 +448,13 @@ def _build_cumulative_x(df: pd.DataFrame) -> Tuple[pd.Series, Dict[int, float], 
     return xvals, layout.offsets, layout.chr_sizes
 
 
-def genome_layout(df: pd.DataFrame) -> Tuple[pd.Series, Dict[int, float], Dict[int, float], float, float]:
-    layout = build_genome_layout(df)
+def genome_layout(
+    df: pd.DataFrame,
+    *,
+    build: str | None = None,
+    data_driven_lengths: bool = False,
+) -> Tuple[pd.Series, Dict[int, float], Dict[int, float], float, float]:
+    layout = build_genome_layout(df, build=build, data_driven_lengths=data_driven_lengths)
     if len(df) == 0:
         xvals = pd.Series(dtype=float, index=df.index)
     else:

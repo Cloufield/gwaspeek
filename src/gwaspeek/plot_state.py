@@ -114,6 +114,8 @@ def normalize_build(build: str | None) -> str:
 def build_genome_layout(
     df: pd.DataFrame,
     build: str | None = None,
+    *,
+    data_driven_lengths: bool = False,
 ) -> GenomeLayout:
     resolved_build = normalize_build(build or str(df.attrs.get("genome_build") or DEFAULT_BUILD))
     chr_max_pos = _coerce_chr_max_pos(df.attrs.get("chr_max_pos"))
@@ -129,7 +131,10 @@ def build_genome_layout(
     offset = 0.0
     for chrom, max_pos in chr_max_pos.items():
         offsets[chrom] = offset
-        span = float(canonical.get(chrom, max_pos))
+        if data_driven_lengths:
+            span = max(1.0, float(max_pos))
+        else:
+            span = float(canonical.get(chrom, max_pos))
         chr_sizes[chrom] = span
         offset += span
 
@@ -155,8 +160,12 @@ def prepare_plot_dataset(
     df: pd.DataFrame,
     layout: GenomeLayout | None = None,
     build: str | None = None,
+    *,
+    data_driven_lengths: bool = False,
 ) -> PlotDataset:
-    resolved_layout = layout or build_genome_layout(df, build=build)
+    resolved_layout = layout or build_genome_layout(
+        df, build=build, data_driven_lengths=data_driven_lengths
+    )
     if len(df) == 0:
         x = np.empty(0, dtype=float)
         chrom = np.empty(0, dtype=int)

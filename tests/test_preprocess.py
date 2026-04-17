@@ -51,6 +51,20 @@ def test_skip_filter_keeps_full_chromosome_layout_metadata() -> None:
     assert chr_sizes_hits == chr_sizes_full
 
 
+def test_prepare_plot_dataset_data_driven_uses_observed_max_not_canonical_x() -> None:
+    raw = pd.DataFrame(
+        {
+            "CHR": [23, 23],
+            "POS": [5_000_000, 8_000_000],
+            "P": [1e-8, 1e-8],
+        }
+    )
+    clean = preprocess_sumstats(raw, skip=5.0)
+    ds = prepare_plot_dataset(clean, build="37", data_driven_lengths=True)
+    assert ds.layout.chr_sizes[23] == 8_000_000.0
+    assert ds.layout.chr_sizes[23] < CANONICAL_CHR_LENGTHS["37"][23]
+
+
 def test_prepare_plot_dataset_uses_canonical_chr_lengths_for_build() -> None:
     raw = pd.DataFrame(
         {
