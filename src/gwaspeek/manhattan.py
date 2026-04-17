@@ -38,10 +38,10 @@ def _chr_alternating_sgr(chrom: int, chr_order: Dict[int, int], *, light_theme: 
     if idx is None:
         return "39"
     if light_theme:
-        # Darker hues for light terminal backgrounds (97/36 wash out on white).
+        # Darker hues for light terminal backgrounds.
         return "34" if (idx % 2) == 0 else "35"
-    # Cyan vs bright white on dark backgrounds.
-    return "36" if (idx % 2) == 0 else "97"
+    # Use only 8-color ANSI codes for broader terminal compatibility.
+    return "36" if (idx % 2) == 0 else "37"
 
 
 def _ansi_paint_glyph(

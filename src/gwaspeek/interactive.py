@@ -823,8 +823,8 @@ def _footer_help_line(
         width,
     )
     text = f"{line1}\n{line2}"
-    # SGR 2 (faint) is often unsupported or invisible; use explicit greys (90 dark / 30 light).
-    muted = "30" if light_theme else "90"
+    # Keep to basic ANSI 8-color codes for maximum portability across terminals.
+    muted = "30" if light_theme else "37"
     return _ansi(text, muted, color)
 
 
