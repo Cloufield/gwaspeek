@@ -294,6 +294,12 @@ def density_legend(unicode: bool) -> str:
     return "density 1x *  2x O  3+x #"
 
 
+def sig_threshold_legend(unicode: bool, sig_level: float) -> str:
+    """Matches the horizontal threshold glyphs drawn on the plot (ASCII vs Unicode)."""
+    dash = "╌" if unicode else "="
+    return f"sig {dash * 4} P={float(sig_level):g} (genome-wide threshold)"
+
+
 def _draw_gene_track(
     canvas: TerminalCanvas,
     genes: List[Tuple[float, float, str]],
@@ -497,7 +503,10 @@ def render_manhattan(
         x_min = global_x_min
         x_max = global_x_max
     if title is None:
-        title = f"Manhattan {viewport_chr_label(x_min, x_max, offsets, chr_sizes)}"
+        title = (
+            f"Manhattan {viewport_chr_label(x_min, x_max, offsets, chr_sizes)} "
+            f"| skip>={float(y_min):.1f}"
+        )
     mask = visible_rows if visible_rows is not None else visible_mask(data, x_min, x_max)
     if len(mask) != len(data.x):
         raise ValueError("Visible row mask does not match prepared dataset length.")

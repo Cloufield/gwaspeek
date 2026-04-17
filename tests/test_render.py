@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from gwaspeek.io import load_sumstats
-from gwaspeek.manhattan import render_manhattan
+from gwaspeek.manhattan import render_manhattan, sig_threshold_legend
 from gwaspeek.preprocess import preprocess_sumstats
 
 
@@ -15,6 +15,12 @@ def _prepared_manhattan():
     return preprocess_sumstats(df, skip=5.0)
 
 
+def test_sig_threshold_legend_matches_plot_glyph() -> None:
+    assert "=" in sig_threshold_legend(False, 5e-8)
+    assert "5e-08" in sig_threshold_legend(False, 5e-8) or "5e-8" in sig_threshold_legend(False, 5e-8)
+    assert "╌" in sig_threshold_legend(True, 5e-8)
+
+
 def test_manhattan_render_deterministic() -> None:
     txt = render_manhattan(_prepared_manhattan(), width=60, height=18, unicode=False)
     assert "Manhattan" in txt
@@ -23,6 +29,7 @@ def test_manhattan_render_deterministic() -> None:
     assert "+" in txt
     assert "*" in txt
     assert "5.0" in txt
+    assert "skip>=" in txt
 
 
 def test_manhattan_ascii_density_glyphs() -> None:

@@ -16,7 +16,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
-from gwaspeek.manhattan import density_legend, render_manhattan, viewport_chr_label
+from gwaspeek.manhattan import density_legend, render_manhattan, sig_threshold_legend, viewport_chr_label
 from gwaspeek.plot_state import PlotDataset, normalize_build, prepare_plot_dataset, visible_mask
 
 
@@ -168,7 +168,7 @@ def region_to_window(region: str, offsets: dict[int, float], chr_sizes: dict[int
 def _help_text() -> str:
     return (
         "Keys: q quit  h help  v vars  t 37|38|off  g jump  l lead  "
-        "r reset  a/d pan (A/D fast)  w/s zoom (W/S fast)  wheel@cursor  arrows  +/-"
+        "r reset  a/d pan (A/D fast)  w/s zoom (W/S fast)  wheel@cursor  +/-"
     )
 
 
@@ -419,6 +419,7 @@ def _inspect_view(
     show_track: bool,
     genes_by_chr: Dict[int, List[Tuple[int, int, str]]],
     *,
+    y_min: float,
     non_human: bool = False,
 ) -> tuple[np.ndarray, Tuple[float, float, str] | None, List[Tuple[float, float, str]], FrameSummary, str]:
     if non_human:
@@ -441,7 +442,7 @@ def _inspect_view(
 
     region = viewport_chr_label(viewport.start, viewport.end, data.layout.offsets, data.layout.chr_sizes)
     view_size = _format_bp_span(viewport.width)
-    title = f"Manhattan {region} | view {view_size} | vars {n_vars}"
+    title = f"Manhattan {region} | view {view_size} | vars {n_vars} | skip>={float(y_min):.1f}"
     if n_chrs > 1:
         title = f"{title} | chrs {n_chrs}"
     if lead_variant is not None:
@@ -479,7 +480,13 @@ def _render_frame(
     non_human: bool = False,
 ) -> tuple[str, FrameSummary]:
     mask, lead_variant, gene_track, summary, title = _inspect_view(
-        data, viewport, show_lead, show_track, genes_by_chr, non_human=non_human
+        data,
+        viewport,
+        show_lead,
+        show_track,
+        genes_by_chr,
+        y_min=y_min,
+        non_human=non_human,
     )
     frame = render_manhattan(
         data.df,
@@ -626,25 +633,25 @@ def _apply_key(
         if non_human:
             return True, show_lead, "off"
         return True, show_lead, _next_track_mode(track_mode)
-    if key in {"a", "\x1b[D"}:
+    if key == "a":
         viewport.pan(-PAN_FRAC_FINE * viewport.width)
         return True, show_lead, track_mode
     if key == "A":
         viewport.pan(-PAN_FRAC_COARSE * viewport.width)
         return True, show_lead, track_mode
-    if key in {"d", "\x1b[C"}:
+    if key == "d":
         viewport.pan(PAN_FRAC_FINE * viewport.width)
         return True, show_lead, track_mode
     if key == "D":
         viewport.pan(PAN_FRAC_COARSE * viewport.width)
         return True, show_lead, track_mode
-    if key in {"w", "-", "_", "\x1b[B"}:
+    if key in {"w", "-", "_"}:
         viewport.zoom(ZOOM_OUT_FINE)
         return True, show_lead, track_mode
     if key == "W":
         viewport.zoom(ZOOM_OUT_COARSE)
         return True, show_lead, track_mode
-    if key in {"s", "+", "=", "\x1b[A"}:
+    if key in {"s", "+", "="}:
         viewport.zoom(ZOOM_IN_FINE)
         return True, show_lead, track_mode
     if key == "S":
@@ -660,10 +667,9 @@ def _render_help_screen() -> str:
         "Navigation:",
         "  a/d          : pan (fine)",
         "  A/D          : pan (coarse)",
-        "  left/right   : pan (fine)",
         "  w/s          : zoom out/in (fine)",
         "  W/S          : zoom out/in (coarse)",
-        "  up/down, +/- : zoom in/out (fine)",
+        "  +/-          : zoom in/out (fine)",
         "  mouse wheel  : zoom at cursor position",
         "  g            : jump to region (chr:start-end)",
         "",
@@ -793,9 +799,15 @@ def _status_line(
     return _ansi(line, "33" if notice else "36", color)
 
 
-def _footer_help_line(width: int, unicode: bool, color: bool) -> str:
-    text = f"{_help_text()} | {density_legend(unicode)}"
-    return _ansi(_truncate_line(text, width), "2", color)
+def _footer_help_line(width: int, unicode: bool, color: bool, sig_level: float) -> str:
+    """Two-line footer; keys and density/sig legend share the same ANSI style."""
+    line1 = _truncate_line(_help_text(), width)
+    line2 = _truncate_line(
+        f"{density_legend(unicode)}  |  {sig_threshold_legend(unicode, sig_level)}",
+        width,
+    )
+    text = f"{line1}\n{line2}"
+    return _ansi(text, "2", color)
 
 
 def _prompt_for_region(
@@ -870,7 +882,13 @@ def run_interactive_manhattan(
                 gene_store, track_mode, viewport, view_mode, non_human=non_human
             )
             mask, _, _, summary, _ = _inspect_view(
-                data, viewport, show_lead, track_mode != "off", genes_by_chr, non_human=non_human
+                data,
+                viewport,
+                show_lead,
+                track_mode != "off",
+                genes_by_chr,
+                y_min=y_min,
+                non_human=non_human,
             )
             _clear_screen()
             if view_mode == "help":
@@ -906,7 +924,7 @@ def run_interactive_manhattan(
                     non_human=non_human,
                 )
             )
-            print(_footer_help_line(width, unicode, color=False))
+            print(_footer_help_line(width, unicode, color=False, sig_level=sig_level))
             key = sys.stdin.read(1)
             notice = None
             if not key:
@@ -936,19 +954,46 @@ def run_interactive_manhattan(
     try:
         _enter_alt_screen()
         tty.setcbreak(fd)
+        painted = False
+        last_term: tuple[int, int] | None = None
+        last_ui_snap: tuple[object, ...] | None = None
         while True:
+            key = _read_key_nonblocking(timeout_sec=0.15)
+            term_size = shutil.get_terminal_size(fallback=(width, height + 3))
+            frame_width = max(20, term_size.columns)
+            term_lines = term_size.lines
+            # Leave room for status line plus two-line footer (no clipping / missing chrome).
+            frame_height = max(8, term_lines - 3)
+            term_sig = (frame_width, term_lines)
+            resized = last_term is not None and term_sig != last_term
+            last_term = term_sig
+
+            ui_snap = (
+                view_mode,
+                show_lead,
+                track_mode,
+                viewport.start,
+                viewport.end,
+                viewport.width,
+            )
+            if painted and key is None and not resized and ui_snap == last_ui_snap:
+                continue
+
             active_build = _active_build(track_mode, base_build)
             data = datasets[active_build]
             offsets = data.layout.offsets
             chr_sizes = data.layout.chr_sizes
-            term_size = shutil.get_terminal_size(fallback=(width, height + 3))
-            frame_width = max(20, term_size.columns)
-            frame_height = max(8, term_size.lines - 2)
             genes_by_chr = _genes_for_view(
                 gene_store, track_mode, viewport, view_mode, non_human=non_human
             )
             mask, _, _, summary, _ = _inspect_view(
-                data, viewport, show_lead, track_mode != "off", genes_by_chr, non_human=non_human
+                data,
+                viewport,
+                show_lead,
+                track_mode != "off",
+                genes_by_chr,
+                y_min=y_min,
+                non_human=non_human,
             )
 
             _clear_screen()
@@ -988,34 +1033,43 @@ def run_interactive_manhattan(
                 )
             )
             sys.stdout.write("\n")
-            sys.stdout.write(_footer_help_line(frame_width, unicode, color_enabled))
+            sys.stdout.write(_footer_help_line(frame_width, unicode, color_enabled, sig_level))
             sys.stdout.flush()
 
+            painted = True
             notice = None
-            key = _read_key_nonblocking(timeout_sec=0.15)
+
             if key is None:
+                last_ui_snap = ui_snap
                 continue
             if view_mode == "plot" and _apply_mouse_wheel(key, viewport, frame_width, frame_height):
-                continue
-            if key in {"h", "H"}:
+                pass
+            elif key in {"h", "H"}:
                 view_mode = "plot" if view_mode == "help" else "help"
-                continue
-            if key in {"v", "V"}:
+            elif key in {"v", "V"}:
                 view_mode = "plot" if view_mode == "variants" else "variants"
-                continue
-            if key in {"g", "G"}:
+            elif key in {"g", "G"}:
                 view_mode = "plot"
                 notice = _prompt_for_region(fd, old_settings, viewport, offsets, chr_sizes)
-                continue
-            old_build = active_build
-            keep_going, show_lead, track_mode = _apply_key(
-                key, viewport, show_lead, track_mode, non_human=non_human
+            else:
+                old_build = active_build
+                keep_going, show_lead, track_mode = _apply_key(
+                    key, viewport, show_lead, track_mode, non_human=non_human
+                )
+                new_build = _active_build(track_mode, base_build)
+                if new_build != old_build:
+                    _remap_viewport_to_build(viewport, datasets[old_build], datasets[new_build])
+                if not keep_going:
+                    break
+
+            last_ui_snap = (
+                view_mode,
+                show_lead,
+                track_mode,
+                viewport.start,
+                viewport.end,
+                viewport.width,
             )
-            new_build = _active_build(track_mode, base_build)
-            if new_build != old_build:
-                _remap_viewport_to_build(viewport, datasets[old_build], datasets[new_build])
-            if not keep_going:
-                break
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         _leave_alt_screen()

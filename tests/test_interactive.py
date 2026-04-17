@@ -104,21 +104,15 @@ def test_apply_key_fine_zoom_is_gentler_than_coarse() -> None:
     assert abs(vp_c.width - w0 / ZOOM_IN_COARSE) < 1e-6
 
 
-def test_apply_key_arrow_aliases_match_fine_navigation() -> None:
+def test_apply_key_arrow_escape_does_not_pan_or_zoom() -> None:
     _, _, x_min, x_max = _layout()
-    pan_ref = Viewport(global_min=x_min, global_max=x_max, start=x_min, end=x_max, min_window_bp=1.0)
-    pan_alt = Viewport(global_min=x_min, global_max=x_max, start=x_min, end=x_max, min_window_bp=1.0)
-    pan_ref.zoom(10.0)
-    pan_alt.set_window(pan_ref.start, pan_ref.end)
-    _apply_key("d", pan_ref, True, "37")
-    _apply_key("\x1b[C", pan_alt, True, "37")
-    assert pan_alt.start == pan_ref.start
-
-    zoom_ref = Viewport(global_min=x_min, global_max=x_max, start=x_min, end=x_max, min_window_bp=1.0)
-    zoom_alt = Viewport(global_min=x_min, global_max=x_max, start=x_min, end=x_max, min_window_bp=1.0)
-    _apply_key("s", zoom_ref, True, "37")
-    _apply_key("\x1b[A", zoom_alt, True, "37")
-    assert zoom_alt.width == zoom_ref.width
+    vp = Viewport(global_min=x_min, global_max=x_max, start=x_min, end=x_max, min_window_bp=1.0)
+    vp.zoom(10.0)
+    start, end, w = vp.start, vp.end, vp.width
+    _apply_key("\x1b[C", vp, True, "37")
+    assert vp.start == start and vp.end == end
+    _apply_key("\x1b[A", vp, True, "37")
+    assert vp.width == w
 
 
 def test_apply_key_plus_minus_aliases_match_fine_zoom() -> None:
