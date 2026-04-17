@@ -22,20 +22,34 @@ def test_manhattan_render_deterministic() -> None:
     assert ":" in txt
     assert "+" in txt
     assert "*" in txt
-    assert "o" in txt
     assert "5.0" in txt
 
 
-def test_manhattan_ascii_uses_filled_and_hollow_dots() -> None:
+def test_manhattan_ascii_density_glyphs() -> None:
     txt = render_manhattan(_prepared_manhattan(), width=60, height=18, unicode=False)
     assert "*" in txt
-    assert "o" in txt
 
 
-def test_manhattan_unicode_uses_filled_and_hollow_dots() -> None:
+def test_manhattan_unicode_density_glyphs() -> None:
     txt = render_manhattan(_prepared_manhattan(), width=60, height=18, unicode=True)
     assert "●" in txt
-    assert "○" in txt
+
+
+def test_manhattan_ascii_two_hits_use_O_glyph() -> None:
+    raw = pd.DataFrame({"CHR": [1, 1], "POS": [100, 100], "P": [1e-8, 1e-8]})
+    txt = render_manhattan(preprocess_sumstats(raw), width=40, height=12, unicode=False)
+    assert "O" in txt
+
+
+def test_manhattan_unicode_two_hits_use_bullseye_glyph() -> None:
+    raw = pd.DataFrame({"CHR": [1, 1], "POS": [100, 100], "P": [1e-8, 1e-8]})
+    txt = render_manhattan(preprocess_sumstats(raw), width=40, height=12, unicode=True)
+    assert "◉" in txt
+
+
+def test_manhattan_color_alternates_by_chromosome() -> None:
+    txt = render_manhattan(_prepared_manhattan(), width=60, height=18, unicode=False, color=True)
+    assert "\x1b[36m" in txt or "\x1b[97m" in txt
 
 
 def test_manhattan_density_marks_overlapping_cells() -> None:

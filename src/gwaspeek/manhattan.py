@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+import os
+import sys
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -17,6 +19,32 @@ from gwaspeek.terminal_canvas import CanvasStyle, TerminalCanvas
 
 def _chr_token(chrom: int) -> str:
     return {23: "X", 24: "Y", 25: "MT"}.get(chrom, str(chrom))
+
+
+def stdout_color_supported() -> bool:
+    """True when stdout looks like a color-capable terminal (respects NO_COLOR)."""
+    term = os.environ.get("TERM", "")
+    return (
+        sys.stdout.isatty()
+        and term not in {"", "dumb"}
+        and "NO_COLOR" not in os.environ
+    )
+
+
+def _chr_alternating_sgr(chrom: int, chr_order: Dict[int, int]) -> str:
+    """ANSI SGR foreground for alternating colors by chromosome order (even/odd index)."""
+    idx = chr_order.get(int(chrom))
+    if idx is None:
+        return "39"
+    # Cyan (bluish) vs bright white; distinct for neighboring chromosomes.
+    return "36" if (idx % 2) == 0 else "97"
+
+
+def _ansi_paint_glyph(glyph: str, chrom: int, chr_order: Dict[int, int], color: bool) -> str:
+    if not color:
+        return glyph
+    code = _chr_alternating_sgr(chrom, chr_order)
+    return f"\x1b[{code}m{glyph}\x1b[0m"
 
 
 def _cumulative_to_chr_pos(
@@ -251,12 +279,9 @@ def _draw_y_tick_labels(
             canvas.set(i, cy, ch)
 
 
-def _density_glyph(count: int, chrom: int, unicode: bool) -> str:
-    odd_chrom = (int(chrom) % 2) == 1
+def _density_glyph(count: int, unicode: bool) -> str:
     if count <= 1:
-        if unicode:
-            return "●" if odd_chrom else "○"
-        return "*" if odd_chrom else "o"
+        return "●" if unicode else "*"
     if count == 2:
         return "◉" if unicode else "O"
     return "█" if unicode else "#"
@@ -264,8 +289,8 @@ def _density_glyph(count: int, chrom: int, unicode: bool) -> str:
 
 def density_legend(unicode: bool) -> str:
     if unicode:
-        return "density 1x ●/○  2x ◉  3+x █"
-    return "density 1x */o  2x O  3+x #"
+        return "density 1x ●  2x ◉  3+x █"
+    return "density 1x *  2x O  3+x #"
 
 
 def _draw_gene_track(
@@ -392,16 +417,17 @@ def _draw_lead_annotation(
     w: int,
     y0: int,
     h: int,
-    unicode: bool,
 ) -> None:
     px = 0.0 if x_max <= x_min else (lead_x - x_min) / (x_max - x_min)
     cx = x_plot0 + int(max(0.0, min(1.0, px)) * w)
     cy = y0 - int(max(0.0, min(1.0, lead_y_ratio)) * h)
-    canvas.set(cx, max(1, cy - 1), "▲" if unicode else "^")
-    start_x = min(max(x_plot0, cx + 1), max(x_plot0, canvas.width - len(lead_label) - 1))
-    for i, ch in enumerate(lead_label[:20]):
+    label = lead_label[:20]
+    label_y = max(1, cy - 1)
+    half = len(label) // 2
+    start_x = min(max(x_plot0, cx - half), max(x_plot0, canvas.width - len(label) - 1))
+    for i, ch in enumerate(label):
         if start_x + i < canvas.width:
-            canvas.set(start_x + i, max(1, cy - 2), ch)
+            canvas.set(start_x + i, label_y, ch)
 
 
 def _build_cumulative_x(df: pd.DataFrame) -> Tuple[pd.Series, Dict[int, float], Dict[int, float]]:
@@ -444,6 +470,7 @@ def render_manhattan(
     force_gene_panel: bool = False,
     prepared: PlotDataset | None = None,
     visible_rows: np.ndarray | None = None,
+    color: bool = False,
 ) -> str:
     data = prepared or prepare_plot_dataset(df)
     offsets = data.layout.offsets
@@ -499,6 +526,7 @@ def render_manhattan(
     denom = float(y_scale) - float(y_min)
 
     sorted_chroms = sorted(chr_sizes.keys())
+    chr_order = {c: i for i, c in enumerate(sorted_chroms)}
     chr_boundaries = _chr_start_boundaries_in_view(x_min, x_max, sorted_chroms, offsets)
 
     cells: Dict[tuple[int, int], tuple[int, int, float]] = {}
@@ -528,7 +556,8 @@ def render_manhattan(
             cell_x = int(cell_flat % canvas.width)
             cells[(cell_x, cell_y)] = (int(count), int(chrom), 0.0)
     for (cx, cy), (count, chrom, _) in cells.items():
-        canvas.set(cx, cy, _density_glyph(count, chrom, unicode))
+        glyph = _density_glyph(count, unicode)
+        canvas.set(cx, cy, _ansi_paint_glyph(glyph, chrom, chr_order, color))
 
     if lead_variant is not None:
         lead_x, lead_y, lead_label = lead_variant
@@ -547,7 +576,6 @@ def render_manhattan(
             w=w,
             y0=y0,
             h=h,
-            unicode=unicode,
         )
 
     # draw significance threshold line

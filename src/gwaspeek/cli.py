@@ -6,7 +6,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from gwaspeek.interactive import default_gtf_path, run_interactive_manhattan
 from gwaspeek.io import load_sumstats
-from gwaspeek.manhattan import render_manhattan
+from gwaspeek.manhattan import render_manhattan, stdout_color_supported
 from gwaspeek.plot_state import prepare_plot_dataset
 from gwaspeek.preprocess import preprocess_sumstats
 
@@ -84,7 +84,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="37",
         help="Reference build for chromosome lengths/layout (default: 37)",
     )
-    parser.add_argument("--no-color", action="store_true", help="Disable ANSI color in interactive mode")
+    parser.add_argument(
+        "--no-color",
+        action="store_true",
+        help="Disable ANSI color (interactive chrome and static Manhattan chromosome colors)",
+    )
     parser.add_argument("--sig-level", type=float, default=5e-8)
     parser.add_argument("--ymax", type=float, default=None)
     parser.add_argument(
@@ -146,6 +150,7 @@ def main(argv: list[str] | None = None) -> None:
     use_unicode = not args.ascii
 
     if mode == "static":
+        chr_color = stdout_color_supported() and not args.no_color
         out = render_manhattan(
             clean,
             width=args.width,
@@ -155,6 +160,7 @@ def main(argv: list[str] | None = None) -> None:
             unicode=use_unicode,
             y_min=float(args.skip),
             prepared=prepared,
+            color=chr_color,
         )
         print(out)
         return

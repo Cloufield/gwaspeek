@@ -470,6 +470,7 @@ def _render_frame(
     ymax: float | None,
     unicode: bool,
     y_min: float,
+    color: bool = False,
 ) -> tuple[str, FrameSummary]:
     mask, lead_variant, gene_track, summary, title = _inspect_view(data, viewport, show_lead, show_track, genes_by_chr)
     frame = render_manhattan(
@@ -488,6 +489,7 @@ def _render_frame(
         force_gene_panel=summary.gene_panel_active,
         prepared=data,
         visible_rows=mask,
+        color=color,
     )
     return frame, summary
 
@@ -854,6 +856,7 @@ def run_interactive_manhattan(
                     ymax,
                     unicode,
                     y_min,
+                    color=False,
                 )
                 print(frame)
             print(_status_line(summary, active_build, track_mode, gene_store, notice, width, color=False))
@@ -914,6 +917,7 @@ def run_interactive_manhattan(
                     ymax,
                     unicode,
                     y_min,
+                    color=color_enabled,
                 )
             sys.stdout.write(body)
             if not body.endswith("\n"):
