@@ -280,7 +280,10 @@ def _draw_y_tick_labels(
             py_ratio = 0.0
         else:
             py_ratio = (float(yt) - float(y_min)) / denom
-        cy = y0 - int(max(0.0, min(1.0, py_ratio)) * h)
+        if h == 0:
+            cy = y0
+        else:
+            cy = y0 - int(max(0.0, min(1.0, py_ratio)) * h)
         cy = max(1, min(y0, cy))
         if last_cy is not None and cy == last_cy:
             continue
@@ -437,7 +440,7 @@ def _draw_lead_annotation(
 ) -> None:
     px = 0.0 if x_max <= x_min else (lead_x - x_min) / (x_max - x_min)
     cx = x_plot0 + int(max(0.0, min(1.0, px)) * w)
-    cy = y0 - int(max(0.0, min(1.0, lead_y_ratio)) * h)
+    cy = y0 if h == 0 else y0 - int(max(0.0, min(1.0, lead_y_ratio)) * h)
     label = lead_label[:20]
     label_y = max(1, cy - 1)
     half = len(label) // 2
@@ -550,9 +553,10 @@ def render_manhattan(
         gene_track = []
         has_gene_track = False
     y0 = (panel_top - 2) if has_gene_track and panel_top is not None else (axis_y - 1)
-    h = y0
+    # Row 0 is the title; data lives in rows 1..=y0. Scale height is y0 - 1, not y0.
+    h = max(0, y0 - 1)
     w = canvas.width - x_plot0 - 1
-    y_ticks = _dynamic_y_ticks(float(y_min), y_cap, h)
+    y_ticks = _dynamic_y_ticks(float(y_min), y_cap, y0)
     y_scale = max(y_ticks[-1], y_cap, sig_logp) if y_ticks else max(y_cap, sig_logp)
     denom = float(y_scale) - float(y_min)
 
@@ -576,7 +580,10 @@ def render_manhattan(
             py = np.clip((vis_y_clipped - float(y_min)) / denom, 0.0, 1.0)
 
         cx = x_plot0 + np.floor(px * w).astype(int)
-        cy = y0 - np.floor(py * h).astype(int)
+        if h == 0:
+            cy = np.full(len(py), y0, dtype=int)
+        else:
+            cy = y0 - np.floor(py * h).astype(int)
         flat = (cy * canvas.width) + cx
         order = np.lexsort((vis_y_clipped, flat))
         flat_sorted = flat[order]
@@ -614,7 +621,7 @@ def render_manhattan(
         sig_ratio = 0.0
     else:
         sig_ratio = max(0.0, min(1.0, float((sig_logp - float(y_min)) / denom)))
-    line_y = y0 - int(sig_ratio * h)
+    line_y = y0 if h == 0 else y0 - int(sig_ratio * h)
     for x in range(x_plot0, canvas.width - 1):
         canvas.set(x, line_y, "=" if not unicode else "╌")
 

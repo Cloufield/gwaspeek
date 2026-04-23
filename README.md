@@ -24,8 +24,10 @@ Use **`--skip`** (default **3.0**) to omit variants whose **-log10(P)** is below
 After [installation](#installation), from a directory that contains the file:
 
 ```bash
-gwaspeek t2d_bbj_p1e-5.txt.gz
+gwaspeek eas_du_p1e-3.tsv.gz
 ```
+
+**Sample data:** `eas_du_p1e-3.tsv.gz` is a small subset (P < 1e-3) of duodenal-ulcer GWAS summary statistics from the East Asian meta-analysis in He *et al.*, [*Nature Genetics* **55**, 2129–2138 (2023)](https://www.nature.com/articles/s41588-023-01569-7) (GWAS Catalog accession [GCST90270928](https://www.ebi.ac.uk/gwas/studies/GCST90270928)).
 
 ### Keys
 
@@ -63,6 +65,15 @@ gwaspeek sumstats.tsv \
   --sig-level 5e-8
 ```
 
+## Documentation
+
+MkDocs site (build locally):
+
+```bash
+pip install -e .[docs]
+mkdocs serve
+```
+
 ## Installation
 
 ```bash
@@ -75,7 +86,7 @@ gwaspeek --help
 For a one-shot text snapshot (non-interactive), add **`-s`** before the path:
 
 ```bash
-gwaspeek -s t2d_bbj_p1e-5.txt.gz --width 120 --ascii
+gwaspeek -s eas_du_p1e-3.tsv.gz --width 120 --ascii
 ```
 
 ### Invocation at a glance
